@@ -13,8 +13,11 @@
 *.a
 
 # Dependency files
-*.d
+*.P
 
 # Ctags
 
 tags
+# objs
+
+obj/
