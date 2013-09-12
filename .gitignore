@@ -21,3 +21,5 @@ tags
 # objs
 
 obj/
+# vim swaps
+.swp
