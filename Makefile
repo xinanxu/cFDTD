@@ -11,7 +11,7 @@ TESTOBJS    := $(foreach o,$(OBJS),./obj/$(o))
 TESTEXES    := $(TESTOBJS:.o=.exe)
 TESTDEPFILES:= $(patsubst %.o, %.P, $(OBJS))
 
-CFLAGS   = -g -Wall -Werror -c -m64 -march=native -mtune=native -msse4.2 -O3 -fpic -I$(CURDIR)/include
+CFLAGS   = -g -Wall -Werror -c -m64 -march=native -mtune=native -msse4.2 -O3 -fpic -I$(CURDIR)/include -std=c++0x
 LDFLAGS  = -Wall -L$(CURDIR) -Wl,-rpath=$(CURDIR)
 LIBS 	 = -lcfdtd
 COMPILER = g++
