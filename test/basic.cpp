@@ -3,7 +3,11 @@
 #include <cassert>
 using namespace std;
 using namespace cfdtd;
-
+dielectric<double> eps(const vec<double,1>& v){
+	if (v.x>1)
+		return dielectric<double>(12.0);
+	return dielectric<double>(1.0);
+}
 int main(){
 
 	dielectric<float> airF(1.0);
@@ -12,6 +16,7 @@ int main(){
 	assert(airF.is_simple());
 	assert(airD.is_simple());
 	assert(airLD.is_simple());
+	cout<<"!!!!!!Material Test Passed!!!!!!"<<endl;
 	vec<double,1> v1_1D(1.);
 	vec<double,1> v2_1D(2.0);
 	v1_1D+=v2_1D*6./3.;
@@ -25,8 +30,13 @@ int main(){
 	vec<float,3> v2_3D(4.0,5.0,6.0);
 	v1_3D-=v2_3D*2;
 	v1_3D*=2;
-	cout<<v1_3D.x<<v1_3D.z;
 	assert(v1_3D.x==-14.0&&v1_3D.z==-18.0);
-	cout<<"!!!!!!Basic Test Passed!!!!!!"<<endl;
+	cout<<"!!!!!!Vector Test Passed!!!!!!"<<endl;
+	structure<double,1>* s1d=new custom_structure<double,1>(10,100);
+	assert(s1d->interval=0.01&&s1d->edges[X]==10);
+	assert(s1d->is_simple()==0);
+	(dynamic_cast<custom_structure<double,1>* >(s1d))->set_dielectric_func(eps);
+	assert(s1d->is_simple()==1);
+	cout<<"!!!!!!Custom Structure Test Passed!!!!!!"<<endl;
 	return 0;
 }
