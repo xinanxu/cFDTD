@@ -19,22 +19,29 @@ static_assert(std::is_floating_point<float_t>::value,"Your type is not a float t
 public:
 	structure(const float_t& x_size,const float_t& resolution_in):resolution(resolution_in),interval(1./resolution){
 		static_assert(dim==1,"Dimension should be defined as 1");
-		edges[X]=x_size;	
+		grids[X]=x_size*resolution;
+		edges[X]=grids[X]*interval;	
 	};
 	structure(const float_t& x_size,const float_t& y_size,const float_t& resolution_in):resolution(resolution_in),interval(1./resolution){
 		static_assert(dim==2,"Dimension should be defined as 2");
-		edges[X]=x_size;	
-		edges[Y]=y_size;	
+		grids[X]=x_size*resolution;
+		edges[X]=grids[X]*interval;	
+		grids[Y]=y_size*resolution;
+		edges[Y]=grids[Y]*interval;	
 	};
 	structure(const float_t& x_size,const float_t& y_size, const float_t& z_size,const float_t& resolution_in):resolution(resolution_in),interval(1./resolution){
 		static_assert(dim==3,"Dimension should be defined as 3");
-		edges[X]=x_size;	
-		edges[Y]=y_size;	
-		edges[Z]=z_size;	
+		grids[X]=x_size*resolution;
+		edges[X]=grids[X]*interval;	
+		grids[Y]=y_size*resolution;
+		edges[Y]=grids[Y]*interval;	
+		grids[Z]=z_size*resolution;
+		edges[Z]=grids[Z]*interval;	
 	};
 	float_t edges[dim];
 	float_t resolution;
 	float_t interval;
+	unsigned int grids[dim];
 	virtual ~structure(){};
 	virtual bool is_simple()=0;
 protected:
