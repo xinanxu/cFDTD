@@ -38,5 +38,15 @@ int main(){
 	(dynamic_cast<custom_structure<double,1>* >(s1d))->set_dielectric_func(eps);
 	assert(s1d->is_simple()==1);
 	cout<<"!!!!!!Custom Structure Test Passed!!!!!!"<<endl;
+	double* a=new double[3*4];
+	double* b=new double[3*4];
+	for(int i=0;i<12;++i) a[i]=i/10.;
+	output<double>("temp.dat",a,IO_BINARY,3,4);
+	input<double>("temp.dat",b,IO_BINARY);
+	assert(b[4]==4./10.);
+	output<double>("temp.txt",a,IO_TEXT,4,3);
+	input<double>("temp.txt",b,IO_BINARY,20);
+	assert(b[4]==4./10.);
+	cout<<"!!!!!!Basic IO test Passed!!!!!!"<<endl;
 	return 0;
 }
