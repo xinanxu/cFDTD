@@ -6,12 +6,12 @@ enum boundary_layer_type{NOTHING=0};
 template<typename float_t,int dim>
 class boundary_layer{
 public:
-	float_t[2*dim];
+	float_t thickness[2*dim];
 	boundary_layer_type b_type;
 	boundary_layer(){};
-	boundary_layer(float_t thickness,boundary_layer_type b_type_in){
+	boundary_layer(float_t thickness_in,boundary_layer_type b_type_in){
 		for(int i=0;i<2*dim;++i)
-			float_t[i]=thickness;
+			thickness[i]=thickness_in;
 		b_type=b_type_in;	
 	};
 };

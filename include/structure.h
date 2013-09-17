@@ -21,6 +21,7 @@ public:
 		static_assert(dim==1,"Dimension should be defined as 1");
 		grids[X]=x_size*resolution;
 		edges[X]=grids[X]*interval;	
+		grids_total=grids[X];
 	};
 	structure(const float_t& x_size,const float_t& y_size,const float_t& resolution_in):resolution(resolution_in),interval(1./resolution){
 		static_assert(dim==2,"Dimension should be defined as 2");
@@ -28,6 +29,7 @@ public:
 		edges[X]=grids[X]*interval;	
 		grids[Y]=y_size*resolution;
 		edges[Y]=grids[Y]*interval;	
+		grids_total=grids[X]*grids[Y];
 	};
 	structure(const float_t& x_size,const float_t& y_size, const float_t& z_size,const float_t& resolution_in):resolution(resolution_in),interval(1./resolution){
 		static_assert(dim==3,"Dimension should be defined as 3");
@@ -37,11 +39,13 @@ public:
 		edges[Y]=grids[Y]*interval;	
 		grids[Z]=z_size*resolution;
 		edges[Z]=grids[Z]*interval;	
+		grids_total=grids[X]*grids[Y]*grids[Z];
 	};
 	float_t edges[dim];
 	float_t resolution;
 	float_t interval;
 	unsigned int grids[dim];
+	unsigned int grids_total;
 	virtual ~structure(){};
 	virtual bool is_simple()=0;
 protected:
