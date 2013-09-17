@@ -3,8 +3,15 @@
 #include <cassert>
 using namespace std;
 using namespace cfdtd;
-dielectric<double> eps(const vec<double,1>& v){
+dielectric<double> eps_fun1(const vec<double,1>& v){
 	if (v.x>1)
+		return dielectric<double>(12.0);
+	return dielectric<double>(1.0);
+}
+dielectric<double> eps_fun2(const vec<double,2>& v){
+	if (v.x>1)
+		return dielectric<double>(12.0);
+	if (v.y>1)
 		return dielectric<double>(12.0);
 	return dielectric<double>(1.0);
 }
@@ -32,20 +39,26 @@ int main(){
 	v1_3D*=2;
 	assert(v1_3D.x==-14.0&&v1_3D.z==-18.0);
 	cout<<"!!!!!!Vector Test Passed!!!!!!"<<endl;
-	structure<double,1>* s1d=new custom_structure<double,1>(10,100);
+	custom_structure<double,1>* s1d=new custom_structure<double,1>(10,100);
 	assert(s1d->interval=0.01&&s1d->edges[X]==10);
 	assert(s1d->is_simple()==0);
-	(dynamic_cast<custom_structure<double,1>* >(s1d))->set_dielectric_func(eps);
+	s1d->set_dielectric_func(eps_fun1);
 	assert(s1d->is_simple()==1);
+	custom_structure<double,2>* s2d=new custom_structure<double,2>(10,10,100);
+	cout<<s1d->edges[Y];
+	assert(s2d->interval=0.01&&s1d->edges[Y]==10);
+	assert(s2d->is_simple()==0);
+	s2d->set_dielectric_func(eps_fun2);
+	assert(s2d->is_simple()==1);
 	cout<<"!!!!!!Custom Structure Test Passed!!!!!!"<<endl;
 	double* a=new double[3*4];
 	double* b=new double[3*4];
 	for(int i=0;i<12;++i) a[i]=i/10.;
-	output<double>("temp.dat",a,IO_BINARY,3,4);
-	input<double>("temp.dat",b,IO_BINARY);
+	output<double>("temp.txt",a,IO_TEXT,3,4);
+	input<double>("temp.txt",b,IO_TEXT,20);
 	assert(b[4]==4./10.);
-	output<double>("temp.txt",a,IO_TEXT,4,3);
-	input<double>("temp.txt",b,IO_BINARY,20);
+	output<double>("temp.dat",a,IO_BINARY,4,3);
+	input<double>("temp.dat",b,IO_BINARY);
 	assert(b[4]==4./10.);
 	cout<<"!!!!!!Basic IO test Passed!!!!!!"<<endl;
 	return 0;
