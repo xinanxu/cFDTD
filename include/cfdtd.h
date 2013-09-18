@@ -4,4 +4,5 @@
 #include "material.h"
 #include "structure.h"
 #include "io.h"
+#include "field.h"
 #endif

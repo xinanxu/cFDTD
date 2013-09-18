@@ -21,6 +21,7 @@
 namespace cfdtd{
 enum field_component{Ex,Hx,Dx,Bx,Ey,Hy,Dy,By,Ez,Hz,Dz,Bz};
 enum mat_component{CA,CB,DA,DB};
+
 template<typename float_t,int dim>
 class field{
 static_assert(dim<=3,"Dimension too large");
@@ -46,29 +47,48 @@ public:
                 return;     
 	};
 private:
-	void material_init(){
+	void material_init();
+};
+	template<typename float_t>
+	void field<float_t,1>::material_init(){
 		       if(s->is_simple()){                                                                                
                 mat[CA]=NULL;                                                                              
                 mat[DA]=NULL;                                                                              
                 mat[DB]=NULL;                                                                              
                 mat[CB]=new float_t[s->grids_total]();                                                     
-                switch(dim){                                                                               
-                        case 1:                                                                            
-                                for(unsigned i=0;i < s->grids[X];++i){                                     
-                                        vec<float_t,1> position((i+0.5)*s->interval);
-                                        dielectric<float_t>* mat_in=s->get_material(position);
-                                        mat[CB][i]=1./mat_in->eps;
-                                }
-                                break;
-                        case 2:
+                for(unsigned i=0;i < s->grids[X];++i){                                     
+                    vec<float_t,1> position((i+0.5)*s->interval);
+                    dielectric<float_t>* mat_in=s->get_material(position);
+                    mat[CB][i]=1./mat_in->eps;
+                }
+                float_t* max_eps_reverse=std::max_element(mat[CB],mat[CB]+s->grids_total);
+                CD=std::sqrt(*max_eps_reverse)/std::sqrt(1);
+         }
+	};
+	template<typename float_t>
+	void field<float_t,2>::material_init(){
+		       if(s->is_simple()){                                                                                
+                mat[CA]=NULL;                                                                              
+                mat[DA]=NULL;                                                                              
+                mat[DB]=NULL;                                                                              
+                mat[CB]=new float_t[s->grids_total]();                                                     
                                 for(unsigned j=0;j < s->grids[Y];++j)
                                 for(unsigned i=0;i < s->grids[X];++i){
                                         vec<float_t,2> position((i+0.5)*s->interval,(j+0.5)*s->interval);
                                         dielectric<float_t>* mat_in=s->get_material(position);
                                         mat[CB][i+j*s->grids[X]]=1./mat_in->eps;
                                 }
-                                break;
-                        case 3:
+                float_t* max_eps_reverse=std::max_element(mat[CB],mat[CB]+s->grids_total);
+                CD=std::sqrt(*max_eps_reverse)/std::sqrt(2);
+		}
+	};
+	template<typename float_t>
+	void field<float_t,3>::material_init(){
+		       if(s->is_simple()){                                                                                
+                mat[CA]=NULL;                                                                              
+                mat[DA]=NULL;                                                                              
+                mat[DB]=NULL;                                                                              
+                mat[CB]=new float_t[s->grids_total]();                                                     
                                 for(unsigned k=0;k < s->grids[Z];++k)
                                 for(unsigned j=0;j < s->grids[Y];++j)
                                 for(unsigned i=0;i < s->grids[X];++i){
@@ -76,15 +96,11 @@ private:
                                         dielectric<float_t>* mat_in=s->get_material(position);
                                         mat[CB][i+(j+k*s->grids[Y])*s->grids[X]]=1./mat_in->eps;
                                 }
-                                break;
-                        default:
-                                assert(true);
-                }
                 float_t* max_eps_reverse=std::max_element(mat[CB],mat[CB]+s->grids_total);
-                CD=std::sqrt(*max_eps_reverse)/std::sqrt(dim);
-        }
+                CD=std::sqrt(*max_eps_reverse)/std::sqrt(3);
+		}
 	};
-};
 }
+
 
 #endif
