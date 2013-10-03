@@ -59,9 +59,8 @@ int main(){
 	output<double>("temp.bmp",a,IO_IMAGE_BMP,4,3);
 	input<double>("temp.dat",b,IO_BINARY);
 	assert(b[4]==4./10.);
-	cout<<"!!!!!!Basic IO test Passed!!!!!!"<<endl;
 	field<double,2> f(s2d,boundary_layer<double,2>(1.0,NOTHING));
-	output<double>("field.bmp",f.mat[CB],IO_IMAGE_BMP,100,100);
-	output<double>("field.txt",f.mat[CB],IO_TEXT,100,100);
+	output<double>("field2d.bmp",f.mat[CB],IO_IMAGE_BMP,100,100);
+	cout<<"!!!!!!Basic IO test Passed!!!!!!"<<endl;
 	return 0;
 }

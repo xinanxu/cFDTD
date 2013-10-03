@@ -5,4 +5,5 @@
 #include "structure.h"
 #include "io/io.h"
 #include "field.h"
+#include "source.h"
 #endif
