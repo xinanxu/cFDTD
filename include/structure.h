@@ -48,7 +48,6 @@ public:
 	unsigned int grids_total;
 	virtual ~structure(){};
 	virtual bool is_simple()=0;
-protected:
 	virtual material* get_material(const vec<float_t,dim>& v)=0;
 };
 
@@ -69,7 +68,6 @@ public:
 		is_dielectric=true;
 	};
 	virtual bool is_simple(){return is_dielectric;};
-private:
 	dielectric<float_t> (*dielectric_func)(const vec<float_t,dim>& v);
 	bool is_dielectric;
 	virtual material* get_material(const vec<float_t,dim>& v){

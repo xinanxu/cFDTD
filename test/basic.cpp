@@ -43,9 +43,8 @@ int main(){
 	assert(s1d->is_simple()==0);
 	s1d->set_dielectric_func(eps_fun1);
 	assert(s1d->is_simple()==1);
-	custom_structure<double,2>* s2d=new custom_structure<double,2>(10,10,100);
-	cout<<s1d->edges[Y];
-	assert(s2d->interval=0.01&&s2d->edges[Y]==10);
+	custom_structure<double,2>* s2d=new custom_structure<double,2>(10,10,10);
+	assert(s2d->interval==0.1&&s2d->edges[Y]==10);
 	assert(s2d->is_simple()==0);
 	s2d->set_dielectric_func(eps_fun2);
 	assert(s2d->is_simple()==1);
@@ -57,9 +56,12 @@ int main(){
 	input<double>("temp.txt",b,IO_TEXT,20);
 	assert(b[4]==4./10.);
 	output<double>("temp.dat",a,IO_BINARY,4,3);
+	output<double>("temp.bmp",a,IO_IMAGE_BMP,4,3);
 	input<double>("temp.dat",b,IO_BINARY);
 	assert(b[4]==4./10.);
 	cout<<"!!!!!!Basic IO test Passed!!!!!!"<<endl;
 	field<double,2> f(s2d,boundary_layer<double,2>(1.0,NOTHING));
+	output<double>("field.bmp",f.mat[CB],IO_IMAGE_BMP,100,100);
+	output<double>("field.txt",f.mat[CB],IO_TEXT,100,100);
 	return 0;
 }
