@@ -14,7 +14,7 @@ TESTDEPFILES:= $(patsubst %.o, %.P, $(TESTOBJS))
 CFLAGS   = -g -Wall -c -m64 -march=native -mtune=native -msse4.2 -O0 -fpic -I$(CURDIR)/include -std=c++0x
 LDFLAGS  = -Wall -L$(CURDIR) -Wl,-rpath=$(CURDIR)
 LIBS 	 = -lcfdtd
-COMPILER = g++
+COMPILER = g++-4.6
  
 TARGET: libcfdtd.so
 

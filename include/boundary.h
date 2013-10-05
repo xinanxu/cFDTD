@@ -2,7 +2,7 @@
 #define _BOUNDARY_H
 
 namespace cfdtd{
-enum boundary_layer_type{NOTHING=0};
+enum boundary_layer_type{ZERO=0};
 template<typename float_t,int dim>
 class boundary_layer{
 public:

@@ -2,6 +2,7 @@
 #define _STRUCTURE_H
 #include "material.h"
 #include "vec.h"
+#include <cstddef>
 #include <type_traits>
 #include <cassert>
 #ifndef NULL
@@ -41,14 +42,18 @@ public:
 		edges[Z]=grids[Z]*interval;	
 		grids_total=grids[X]*grids[Y]*grids[Z];
 	};
-	float_t edges[dim];
+	float_t edges[dim];//< Actual xyz_size
 	float_t resolution;
 	float_t interval;
-	unsigned int grids[dim];
+	unsigned int grids[dim];//< num of nodes per axis
 	unsigned int grids_total;
 	virtual ~structure(){};
 	virtual bool is_simple()=0;
 	virtual material* get_material(const vec<float_t,dim>& v)=0;
+
+	inline float_t get_pos(size_t num){return (0.5+num)*interval;};
+	/// get the nearest index for a position, which is the most useful one
+	inline size_t get_index(float_t pos){return pos*resolution;};
 };
 
 ///Simple structure using function pointer
@@ -78,6 +83,7 @@ public:
 		}
 		return NULL;
 	};
+	virtual ~custom_structure(){};
 };
 }
 #endif

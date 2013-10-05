@@ -13,6 +13,8 @@
 #include <algorithm>
 namespace cfdtd
   {
+	  namespace io{
+enum color_map{BLUE_RED,WHITE_BLACK};
 
   //--------------------------------------------------------------------------
   // This little helper is to write little-endian values to file.
@@ -43,7 +45,7 @@ namespace cfdtd
     Iterator      begin,
     size_t        rows,
     size_t        columns,
-    unsigned char default_value = 0
+	color_map CM=BLUE_RED
     ) {
     std::ofstream f( filename, std::ios::out | std::ios::trunc | std::ios::binary );
     if (!f) return false;
@@ -77,14 +79,15 @@ namespace cfdtd
     Iterator mi=std::min_element(begin,begin+columns*rows);
     Iterator ma=std::max_element(begin,begin+columns*rows);
     // Write the pixel data
-    unsigned int row;
-    for (row = rows; row>0; row--)           // bottom-to-top
+    int row;
+    for (row = rows-1; row>=0; row--)           // bottom-to-top
       {
       for (unsigned col = 0; col < columns; col++)  // left-to-right
         {
 			double        d = 0.0;
 
-
+		switch(CM){
+			case BLUE_RED:	
 			d=*(begin+row*columns+col);
 			if(d>0.){
 			f.put( static_cast <char> (255-255.*d / *ma) )
@@ -96,7 +99,22 @@ namespace cfdtd
 				 .put( static_cast <char> (255+255.*d / *mi) )
 				 .put( static_cast <char> (255+255.*d / *mi) );
 			}
+			break;
+			case WHITE_BLACK:
+			d=*(begin+row*columns+col);
+			if(d>0.){
+			f.put( static_cast <char> (255-255.*d / *ma) )
+			 .put( static_cast <char> (255-255.*d / *ma) )
+			 .put( static_cast <char> (255-255.*d / *ma) );
+			}
+			else{
+				f.put( static_cast <char> (255) )
+				 .put( static_cast <char> (255) )
+				 .put( static_cast <char> (255) );
+			}
+			break;
         }
+		}
 
       if (padding_size) f << lwrite( 0, padding_size );
       }
@@ -106,6 +124,6 @@ namespace cfdtd
     }
 
   } 
-
+  }
 #endif
 

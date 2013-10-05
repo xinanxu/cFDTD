@@ -5,7 +5,7 @@
 #include <fstream>
 #include "bmp.h"
 namespace cfdtd{
-
+namespace io{
 enum io_type{IO_BINARY,IO_TEXT,IO_IMAGE_BMP};
 
 template<typename float_t>
@@ -34,8 +34,9 @@ int input(char* filename,float_t* data,io_type type,size_t max_size=std::numeric
 	}
         return 0;
 };
+using io::color_map;
 template<typename float_t>
-int output(char* filename,float_t* data,io_type type,size_t max_col=1,size_t max_row=1){
+int output(char* filename,float_t* data,io_type type,size_t max_col=1,size_t max_row=1,color_map cm=BLUE_RED){
     std::ofstream ofs;
 	switch(type){
 		case IO_BINARY:
@@ -55,11 +56,12 @@ int output(char* filename,float_t* data,io_type type,size_t max_col=1,size_t max
         	ofs.close();
 			break;
 		case IO_IMAGE_BMP:
-			floats_to_bitmap_file(filename,data,max_row,max_col);
+			floats_to_bitmap_file(filename,data,max_row,max_col,cm);
 			break;
 	}
         return 0;
 };
+}
 }
 
 #endif

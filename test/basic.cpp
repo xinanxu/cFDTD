@@ -9,9 +9,9 @@ dielectric<double> eps_fun1(const vec<double,1>& v){
 	return dielectric<double>(1.0);
 }
 dielectric<double> eps_fun2(const vec<double,2>& v){
-	if (v.x>1)
+	if (v.x>5)
 		return dielectric<double>(12.0);
-	if (v.y>1)
+	if (v.y>5)
 		return dielectric<double>(12.0);
 	return dielectric<double>(1.0);
 }
@@ -52,15 +52,28 @@ int main(){
 	double* a=new double[3*4];
 	double* b=new double[3*4];
 	for(int i=0;i<12;++i) a[i]=i/10.;
-	output<double>("temp.txt",a,IO_TEXT,3,4);
-	input<double>("temp.txt",b,IO_TEXT,20);
+	io::output<double>("temp.txt",a,io::IO_TEXT,3,4);
+	io::input<double>("temp.txt",b,io::IO_TEXT,20);
 	assert(b[4]==4./10.);
-	output<double>("temp.dat",a,IO_BINARY,4,3);
-	output<double>("temp.bmp",a,IO_IMAGE_BMP,4,3);
-	input<double>("temp.dat",b,IO_BINARY);
+	io::output<double>("temp.dat",a,io::IO_BINARY,4,3);
+	io::output<double>("temp.bmp",a,io::IO_IMAGE_BMP,4,3);
+	io::input<double>("temp.dat",b,io::IO_BINARY);
 	assert(b[4]==4./10.);
-	field<double,2> f(s2d,boundary_layer<double,2>(1.0,NOTHING));
-	output<double>("field2d.bmp",f.mat[CB],IO_IMAGE_BMP,100,100);
+	field<double,2> f(s2d,boundary_layer<double,2>(1.0,ZERO));
+	f.output(EPS,"eps.bmp");
+	f.output(EPS,"eps.txt",io::IO_TEXT);
+	f.output(CB,"CB.bmp");
+	f.output(CB,"CB.txt",io::IO_TEXT);
+	sinc_source<double>* src=new sinc_source<double>(Ez,1.,1.);
+	f.push_source(vec<double,2>(1.0,1.0),src,0.);
+	f.stepto(0.5);
+	f.output(Ez,"Ez1.bmp");
+	f.stepto(1.5);
+	f.output(Ez,"Ez2.bmp");
+	f.stepto(10);
+	f.output(Ez,"Ez3.bmp");
+	f.stepto(30);
+	f.output(Ez,"Ez4.bmp");
 	cout<<"!!!!!!Basic IO test Passed!!!!!!"<<endl;
 	return 0;
 }
