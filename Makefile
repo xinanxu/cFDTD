@@ -11,9 +11,9 @@ TESTOBJS    := $(foreach o,$(TESTOBJS),./obj/$(o))
 TESTEXES    := $(patsubst %.o, %.exe, $(TESTOBJS))
 TESTDEPFILES:= $(patsubst %.o, %.P, $(TESTOBJS))
 
-CFLAGS   = -g -Wall -c -m64 -march=native -mtune=native -msse4.2 -O0 -fpic -I$(CURDIR)/include -std=c++0x
+CFLAGS   = -g -Wall -c -m64 -march=native -mtune=native -msse4.2 -O3 -fpic -I$(CURDIR)/include -std=c++0x -fopenmp
 LDFLAGS  = -Wall -L$(CURDIR) -Wl,-rpath=$(CURDIR)
-LIBS 	 = -lcfdtd
+LIBS 	 = -lcfdtd -lgomp
 COMPILER = g++-4.6
  
 TARGET: libcfdtd.so
@@ -21,7 +21,7 @@ TARGET: libcfdtd.so
 libcfdtd.so: $(OBJS)
 	$(COMPILER) -shared $(OBJS) -o $@
 
-test: $(TARGET)$(TESTEXES)
+test: $(TARGET)$(TESTEXES) Makefile
 
 obj/%.o : %.cpp
 	@mkdir -p $(@D)
@@ -32,7 +32,7 @@ obj/%.o : %.cpp
 obj/%.exe : obj/%.o 
 	@mkdir -p $(@D)
 	$(COMPILER) $(LDFLAGS)  -o $@ $< $(LIBS)
-	./$@ 
+	-./$@ 
 	
 clean:
 	rm -rf obj

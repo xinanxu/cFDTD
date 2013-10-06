@@ -1,5 +1,6 @@
 #ifndef _FIELD_H
 #define _FIELD_H
+#include "config.h"
 #include "structure.h"
 #include <type_traits>
 #include <cassert>
@@ -9,22 +10,95 @@
 #include "source.h"
 #include "io/io.h"
 #include <tuple>
-#include <ctime>
 #include <cstdio>
+#include <omp.h>
 
 ///Cache optimization
 #ifdef LEVEL3_CACHE_SIZE
-#define CACHE_SIZE LEVEL2_CACHE_SIZE
-#elif defined LEVEL2_CACHE_SIZE
-#define CACHE_SIZE (LEVEL2_CACHE_SIZE/_NPROCESSORS_ONLN
-#elif defined LEVEL1_CACHE_SIZE
-#define CACHE_SIZE LEVEL1_CACHE_SIZE
-#elif !defined CACHE_SIZE
-#define CACHE_SIZE 65536
+const unsigned int shared_cache=LEVEL3_CACHE_SIZE;
+#define SHARED_CACHE
+#ifdef LEVEL2_CACHE_SIZE
+const unsigned int seperated_cache=LEVEL2_CACHE_SIZE;
+#define SEPERATED_CACHE
+#ifdef LEVEL1_DCACHE_SIZE
+const unsigned int seperated_cache_inner=LEVEL1_DCACHE_SIZE;
+#define SEPERATED_CACHE_INNER
+#else
+#error "Could not find definition of LEVEL1_DCACHE_SIZE"
+#endif
+#else
+#error "Could not find definition of LEVEL2_CACHE_SIZE"
+#endif
+#else
+#warning "Could not find definition of LEVEL3_CACHE_SIZE, is your machine that old???"
+#ifdef  LEVEL2_CACHE_SIZE
+const unsigned int shared_cache=LEVEL2_CACHE_SIZE;
+#define SHARED_CACHE
+#ifdef  LEVEL_1_DCACHE_SIZE
+const unsigned int seperated_cache=LEVEL1_DCACHE_SIZE;
+#define SEPERATED_CACHE
+#else
+#error "Could not find definition of LEVEL1_DCACHE_SIZE"
+#endif
+#else
+#error "Could not find definition of LEVEL2_CACHE_SIZE, cFDTD is not able to build on machine that old???"
+#endif
 #endif
 
-namespace cfdtd{
+static_assert(shared_cache!=0,"Do not use 0 as CACHE_SIZE");
+static_assert(seperated_cache!=0,"Do not use 0 as CACHE_SIZE");
+#ifdef SEPERATED_CACHE_INNER
+static_assert(seperated_cache_inner!=0,"Do not use 0 as CACHE_SIZE");
+#endif
+static_assert(shared_cache>seperated_cache,"High level cache should be larger than low level cache");
+#ifdef SEPERATED_CACHE_INNER
+static_assert(seperated_cache>seperated_cache_inner,"High level cache should be larger than low level cache");
+#endif
+	
+///loop optimization for cache usage
+#define DEFINE_TRIPLE_LOOP(DATA_TYPES_NEED) \
+	const size_t seperated_loop_size_inner=static_cast<const size_t>(sqrt(seperated_cache_inner/sizeof(float_t)/DATA_TYPES_NEED))-2;\
+	static_assert(seperated_loop_size_inner>1,"L1 cache size too small");\
+	const size_t seperated_loop_num=(static_cast<const size_t>(sqrt(seperated_cache/sizeof(float_t)/DATA_TYPES_NEED))-2)/seperated_loop_size_inner;\
+	const size_t seperated_loop_size=seperated_loop_num*seperated_loop_size_inner;\
+	static_assert(seperated_loop_num>1,"L2 cache size too small");\
+	const size_t shared_loop_num=(static_cast<const size_t>(sqrt(shared_cache/sizeof(float_t)/DATA_TYPES_NEED))-2)/seperated_loop_size;\
+	const size_t shared_loop_size=shared_loop_num*seperated_loop_size;\
+	static_assert(shared_loop_num>1,"L3 cache size too small")
 
+
+#define DEFINE_DUAL_LOOP(DATA_TYPES_NEED) \
+	const size_t seperated_loop_size=static_cast<const size_t>(sqrt(seperated_cache/sizeof(float_t)/DATA_TYPES_NEED))-2;\
+	static_assert(seperated_loop_size>1,"L1 cache size too small");\
+	const size_t shared_loop_num=(static_cast<const size_t>(sqrt(shared_cache/sizeof(float_t)/DATA_TYPES_NEED))-2)/seperated_loop_size;\
+	const size_t shared_loop_size=shared_loop_num*seperated_loop_size;\
+	static_assert(shared_loop_num>1,"L2 cache size too small")
+
+#define DIVIDE_CEIL(x,y) (x+y-1)/y
+
+#define EXEC_DUAL_LOOP(STATEMENTS) \
+
+#define EXEC_TRIPLE_LOOP(STATEMENTS) \
+
+
+#define PARALLEL_STEP(x,y) x ## _ ## y()
+#define EXEC_STEP(x,y) switch(y){\
+		case SERIAL:\
+		PARALLEL_STEP(x,SERIAL);\
+		break;\
+		case OMP:\
+		PARALLEL_STEP(x,OMP);\
+		break;\
+		case OCL:\
+		PARALLEL_STEP(x,OCL);\
+		break;\
+		}
+#define DECLARE_STEP(x) \
+		void x ## _SERIAL();\
+		void x ## _OMP();\
+		void x ## _OCL()
+
+namespace cfdtd{
 template<typename float_t,int dim>
 class field{
 static_assert(dim<=3,"Dimension too large");
@@ -49,6 +123,7 @@ public:
                 data[Dx+4*i]=NULL;                                                                       
                 data[Bx+4*i]=NULL;                                                                       
         }                                                                                                  
+		time=0.;
         if(s->is_simple())                                                                                 
                 return;     
 	};
@@ -106,14 +181,16 @@ public:
    		    data[Hy]=NULL;
 			break;
 		}
+		time=0.;
         if(s->is_simple())                                                                                 
                 return;     
 	};
-	void step();
-	void step_TE();
-	void step_TM();
-	void step_source();
-	void stepto(float_t t);
+	void step(PARALLEL_TYPE pt=SERIAL);
+	DECLARE_STEP(step_TE);
+	DECLARE_STEP(step_TM);
+	DECLARE_STEP(step_TMTE);
+	DECLARE_STEP(step_source);
+	void stepto(float_t t,PARALLEL_TYPE pt=SERIAL);
 	std::vector<std::tuple<vec<float_t,2>,source<float_t>*,float_t> > source_list;
 	int output(mat_component mat_c,char* filename,io::io_type io_t=io::IO_IMAGE_BMP,io::color_map cm=io::WHITE_BLACK){
 		if(mat_c==EPS){
@@ -161,6 +238,7 @@ public:
                 data[Dx+4*i]=NULL;                                                                       
                 data[Bx+4*i]=NULL;                                                                       
         }                                                                                                  
+		time=0.;
         if(s->is_simple())                                                                                 
                 return;     
 	};
@@ -226,9 +304,10 @@ void field<float_t,3>::material_init(){
 }
 /////////////////////////////////////////////////////
 //real step function, simplest implementation
+//Two Dimension, Serial
 ////////////////////////////////////////////////////
 template<typename float_t>
-void field<float_t,2>::step_source(){
+void field<float_t,2>::step_source_SERIAL(){
 	for(typename std::vector<std::tuple<vec<float_t,2>,source<float_t>*,float_t> >::iterator it=source_list.begin();it!=source_list.end();++it){
 		source<float_t>* &src=std::get<1>(*it);
 		vec<float_t,2> &p=std::get<0>(*it);
@@ -240,25 +319,31 @@ void field<float_t,2>::step_source(){
 	}
 }
 template<typename float_t>
-void field<float_t,2>::step_TM(){
+void field<float_t,2>::step_TM_SERIAL(){
 	switch(b.b_type){
 		case ZERO:
 			for(size_t j=1;j<s->grids[Y]-1;++j)
 			for(size_t i=1;i<s->grids[X]-1;++i){
 				data[Hx][i+j*s->grids[X]]+=CD*(data[Ez][i+j*s->grids[X]]-data[Ez][i+(j+1)*s->grids[X]]);
 				data[Hy][i+j*s->grids[X]]+=CD*(data[Ez][i+1+j*s->grids[X]]-data[Ez][i+j*s->grids[X]]);
-				data[Ez][i+j*s->grids[X]]+=mat[CB][i+j*s->grids[X]]*(data[Hy][i+j*s->grids[X]]-data[Hy][i-1+j*s->grids[X]]+data[Hx][i+(j-1)*s->grids[X]]-data[Hx][i+j*s->grids[X]]);
+			}
+			for(size_t j=1;j<s->grids[Y]-1;++j)
+			for(size_t i=1;i<s->grids[X]-1;++i){
+				data[Ez][i+j*s->grids[X]]+=mat[CB][i+j*s->grids[X]]*CD*(data[Hy][i+j*s->grids[X]]-data[Hy][i-1+j*s->grids[X]]+data[Hx][i+(j-1)*s->grids[X]]-data[Hx][i+j*s->grids[X]]);
 			}
 			break;
 	}
 }
 template<typename float_t>
-void field<float_t,2>::step_TE(){
+void field<float_t,2>::step_TE_SERIAL(){
 	switch(b.b_type){
 		case ZERO:
 			for(size_t j=1;j<s->grids[Y]-1;++j)
 			for(size_t i=1;i<s->grids[X]-1;++i){
 				data[Hz][i+j*s->grids[X]]+=CD*(data[Ex][i+(j+1)*s->grids[X]]-data[Ex][i+j*s->grids[X]]+data[Ey][i+j*s->grids[X]]-data[Ey][i+1+j*s->grids[X]]);
+			}
+			for(size_t j=1;j<s->grids[Y]-1;++j)
+			for(size_t i=1;i<s->grids[X]-1;++i){
 				data[Ex][i+j*s->grids[X]]+=CD*0.5*(mat[CB][i+j*s->grids[X]]+mat[CB][i+1+j*s->grids[X]])*(data[Hz][i+j*s->grids[X]]-data[Hz][i+(j-1)*s->grids[X]]);
 				data[Ey][i+j*s->grids[X]]+=CD*0.5*(mat[CB][i+j*s->grids[X]]+mat[CB][i+(j+1)*s->grids[X]])*(data[Hz][i-1+j*s->grids[X]]-data[Hz][i+j*s->grids[X]]);
 			}
@@ -266,21 +351,226 @@ void field<float_t,2>::step_TE(){
 	}
 }
 template<typename float_t>
-void field<float_t,2>::step(){
+void field<float_t,2>::step_TMTE_SERIAL(){
+	switch(b.b_type){
+		case ZERO:
+			for(size_t j=1;j<s->grids[Y]-1;++j)
+			for(size_t i=1;i<s->grids[X]-1;++i){
+				data[Hx][i+j*s->grids[X]]+=CD*(data[Ez][i+j*s->grids[X]]-data[Ez][i+(j+1)*s->grids[X]]);
+				data[Hy][i+j*s->grids[X]]+=CD*(data[Ez][i+1+j*s->grids[X]]-data[Ez][i+j*s->grids[X]]);
+				data[Hz][i+j*s->grids[X]]+=CD*(data[Ex][i+(j+1)*s->grids[X]]-data[Ex][i+j*s->grids[X]]+data[Ey][i+j*s->grids[X]]-data[Ey][i+1+j*s->grids[X]]);
+			}
+			for(size_t j=1;j<s->grids[Y]-1;++j)
+			for(size_t i=1;i<s->grids[X]-1;++i){
+				data[Ex][i+j*s->grids[X]]+=CD*0.5*(mat[CB][i+j*s->grids[X]]+mat[CB][i+1+j*s->grids[X]])*(data[Hz][i+j*s->grids[X]]-data[Hz][i+(j-1)*s->grids[X]]);
+				data[Ey][i+j*s->grids[X]]+=CD*0.5*(mat[CB][i+j*s->grids[X]]+mat[CB][i+(j+1)*s->grids[X]])*(data[Hz][i-1+j*s->grids[X]]-data[Hz][i+j*s->grids[X]]);
+				data[Ez][i+j*s->grids[X]]+=mat[CB][i+j*s->grids[X]]*CD*(data[Hy][i+j*s->grids[X]]-data[Hy][i-1+j*s->grids[X]]+data[Hx][i+(j-1)*s->grids[X]]-data[Hx][i+j*s->grids[X]]);
+			}
+			break;
+	}
+}
+/////////////////////////////////////////////////////
+//Two Dimension, OMP
+////////////////////////////////////////////////////
+template<typename float_t>
+void field<float_t,2>::step_source_OMP(){
+	step_source_SERIAL();
+}
+template<typename float_t>
+void field<float_t,2>::step_TM_OMP(){
+
+#ifdef SEPERATED_CACHE_INNER
+///For TM, only 4 fields(CB,Ez,Hx,Hy) will be used
+	DEFINE_TRIPLE_LOOP(4);
+#else
+	DEFINE_DUAL_LOOP(4);
+#endif
+
+	switch(b.b_type){
+		case ZERO:
+			for(size_t L3_index_x=0 ; L3_index_x < DIVIDE_CEIL(s->grids[X]-2,shared_loop_size); L3_index_x++)
+			for(size_t L3_index_y=0 ; L3_index_y < DIVIDE_CEIL(s->grids[Y]-2,shared_loop_size); L3_index_y++)
+			{
+
+				size_t L3_x_begin=L3_index_x*shared_loop_size+1;
+				size_t L3_x_end=(L3_index_x+1)*shared_loop_size+1;
+				if (L3_x_end>s->grids[X]-1) L3_x_end=s->grids[X]-1;
+				assert(L3_x_end>L3_x_begin);
+
+				size_t L3_y_begin=L3_index_y*shared_loop_size+1;
+				size_t L3_y_end=(L3_index_y+1)*shared_loop_size+1;
+				if (L3_y_end>s->grids[Y]-1) L3_y_end=s->grids[Y]-1;
+				assert(L3_y_end>L3_y_begin);
+				
+				for(size_t L2_index_x=0 ; L2_index_x < DIVIDE_CEIL(L3_x_end-L3_x_begin,seperated_loop_size) ; L2_index_x++)
+				for(size_t L2_index_y=0 ; L2_index_y < DIVIDE_CEIL(L3_y_end-L3_y_begin,seperated_loop_size) ; L2_index_y++)
+				{
+					size_t L2_x_begin=L2_index_x*seperated_loop_size;
+					size_t L2_x_end=(L2_index_x+1)*seperated_loop_size;
+					if (L2_x_end>L3_x_end-L3_x_begin) L2_x_end=L3_x_end-L3_x_begin;
+					assert(L2_x_end>L2_x_begin);
+	
+					size_t L2_y_begin=L2_index_y*seperated_loop_size;
+					size_t L2_y_end=(L2_index_y+1)*seperated_loop_size;
+					if (L2_y_end>L3_y_end-L3_y_begin) L2_y_end=L3_y_end-L3_y_begin;
+					assert(L2_y_end>L2_y_begin);
+
+#ifdef SEPERATED_CACHE_INNER
+					for(size_t L1_index_x=0 ; L1_index_x < DIVIDE_CEIL(L2_x_end-L2_x_begin,seperated_loop_size_inner) ; L1_index_x++)
+					for(size_t L1_index_y=0 ; L1_index_y < DIVIDE_CEIL(L2_y_end-L2_y_begin,seperated_loop_size_inner) ; L1_index_y++)
+					{
+						size_t L1_x_begin=L1_index_x*seperated_loop_size_inner;
+						size_t L1_x_end=(L1_index_x+1)*seperated_loop_size_inner;
+						if (L1_x_end>L2_x_end-L2_x_begin) L1_x_end=L2_x_end-L2_x_begin;
+						assert(L1_x_end>L1_x_begin);
+						
+						size_t L1_y_begin=L1_index_y*seperated_loop_size_inner;
+						size_t L1_y_end=(L1_index_y+1)*seperated_loop_size_inner;
+						if (L1_y_end>L2_y_end-L2_y_begin) L1_y_end=L2_y_end-L2_y_begin;
+						assert(L1_y_end>L1_y_begin);
+
+						size_t x0=L3_x_begin+L2_x_begin+L1_x_begin;
+						size_t y0=L3_y_begin+L2_y_begin+L1_y_begin;
+						size_t entry=x0+y0*s->grids[X];
+
+						for(size_t j=0; j < L1_y_end-L1_y_begin ; j++)
+						for(size_t i=0; i < L1_x_end-L1_x_begin ; i++)
+						{
+//----------------->
+							data[Hx][entry+i+j*s->grids[X]]+=CD*(data[Ez][entry+i+j*s->grids[X]]-data[Ez][entry+i+(j+1)*s->grids[X]]);
+							data[Hy][entry+i+j*s->grids[X]]+=CD*(data[Ez][entry+i+1+j*s->grids[X]]-data[Ez][entry+i+j*s->grids[X]]);
+						}
+					}
+#else
+
+					size_t x0=L3_x_begin+L2_x_begin;
+					size_t y0=L3_y_begin+L2_y_begin;
+					size_t entry=x0+y0*s->grids[X];
+					for(size_t j=0; j < L2_y_end-L2_y_begin ; j++)
+					for(size_t i=0; i < L2_x_end-L2_x_begin ; i++)
+					{
+//----------------->
+						data[Hx][entry+i+j*s->grids[X]]+=CD*(data[Ez][entry+i+j*s->grids[X]]-data[Ez][entry+i+(j+1)*s->grids[X]]);
+						data[Hy][entry+i+j*s->grids[X]]+=CD*(data[Ez][entry+i+1+j*s->grids[X]]-data[Ez][entry+i+j*s->grids[X]]);
+					}
+#endif
+				}
+			}
+
+			for(size_t L3_index_x=0 ; L3_index_x < DIVIDE_CEIL(s->grids[X]-2,shared_loop_size); L3_index_x++)
+			for(size_t L3_index_y=0 ; L3_index_y < DIVIDE_CEIL(s->grids[Y]-2,shared_loop_size); L3_index_y++)
+			{
+
+				size_t L3_x_begin=L3_index_x*shared_loop_size+1;
+				size_t L3_x_end=(L3_index_x+1)*shared_loop_size+1;
+				if (L3_x_end>s->grids[X]-1) L3_x_end=s->grids[X]-1;
+				assert(L3_x_end>L3_x_begin);
+
+				size_t L3_y_begin=L3_index_y*shared_loop_size+1;
+				size_t L3_y_end=(L3_index_y+1)*shared_loop_size+1;
+				if (L3_y_end>s->grids[Y]-1) L3_y_end=s->grids[Y]-1;
+				assert(L3_y_end>L3_y_begin);
+				
+				for(size_t L2_index_x=0 ; L2_index_x < DIVIDE_CEIL(L3_x_end-L3_x_begin,seperated_loop_size) ; L2_index_x++)
+				for(size_t L2_index_y=0 ; L2_index_y < DIVIDE_CEIL(L3_y_end-L3_y_begin,seperated_loop_size) ; L2_index_y++)
+				{
+					size_t L2_x_begin=L2_index_x*seperated_loop_size;
+					size_t L2_x_end=(L2_index_x+1)*seperated_loop_size;
+					if (L2_x_end>L3_x_end-L3_x_begin) L2_x_end=L3_x_end-L3_x_begin;
+					assert(L2_x_end>L2_x_begin);
+	
+					size_t L2_y_begin=L2_index_y*seperated_loop_size;
+					size_t L2_y_end=(L2_index_y+1)*seperated_loop_size;
+					if (L2_y_end>L3_y_end-L3_y_begin) L2_y_end=L3_y_end-L3_y_begin;
+					assert(L2_y_end>L2_y_begin);
+
+#ifdef SEPERATED_CACHE_INNER
+					for(size_t L1_index_x=0 ; L1_index_x < DIVIDE_CEIL(L2_x_end-L2_x_begin,seperated_loop_size_inner) ; L1_index_x++)
+					for(size_t L1_index_y=0 ; L1_index_y < DIVIDE_CEIL(L2_y_end-L2_y_begin,seperated_loop_size_inner) ; L1_index_y++)
+					{
+						size_t L1_x_begin=L1_index_x*seperated_loop_size_inner;
+						size_t L1_x_end=(L1_index_x+1)*seperated_loop_size_inner;
+						if (L1_x_end>L2_x_end-L2_x_begin) L1_x_end=L2_x_end-L2_x_begin;
+						assert(L1_x_end>L1_x_begin);
+						
+						size_t L1_y_begin=L1_index_y*seperated_loop_size_inner;
+						size_t L1_y_end=(L1_index_y+1)*seperated_loop_size_inner;
+						if (L1_y_end>L2_y_end-L2_y_begin) L1_y_end=L2_y_end-L2_y_begin;
+						assert(L1_y_end>L1_y_begin);
+
+						size_t x0=L3_x_begin+L2_x_begin+L1_x_begin;
+						size_t y0=L3_y_begin+L2_y_begin+L1_y_begin;
+						size_t entry=x0+y0*s->grids[X];
+
+						for(size_t j=0; j < L1_y_end-L1_y_begin ; j++)
+						for(size_t i=0; i < L1_x_end-L1_x_begin ; i++)
+						{
+//----------------->
+						data[Ez][entry+i+j*s->grids[X]]+=mat[CB][entry+i+j*s->grids[X]]*CD*(data[Hy][entry+i+j*s->grids[X]]-data[Hy][entry+i-1+j*s->grids[X]]+data[Hx][entry+i+(j-1)*s->grids[X]]-data[Hx][entry+i+j*s->grids[X]]);
+						}
+					}
+#else
+
+					size_t x0=L3_x_begin+L2_x_begin;
+					size_t y0=L3_y_begin+L2_y_begin;
+					size_t entry=x0+y0*s->grids[X];
+					for(size_t j=0; j < L2_y_end-L2_y_begin ; j++)
+					for(size_t i=0; i < L2_x_end-L2_x_begin ; i++)
+					{
+//----------------->
+						data[Ez][entry+i+j*s->grids[X]]+=mat[CB][entry+i+j*s->grids[X]]*CD*(data[Hy][entry+i+j*s->grids[X]]-data[Hy][entry+i-1+j*s->grids[X]]+data[Hx][entry+i+(j-1)*s->grids[X]]-data[Hx][entry+i+j*s->grids[X]]);
+					}
+#endif
+				}
+			}
+			break;
+	}
+}
+template<typename float_t>
+void field<float_t,2>::step_TE_OMP(){
+#ifdef SEPERATED_CACHE_INNER
+///For TM, only 4 fields(CB,Ez,Hx,Hy) will be used
+	DEFINE_TRIPLE_LOOP(4);
+#define TRIPLE_LOOP
+#else
+	DEFINE_DUAL_LOOP(4);
+#define DUAL_LOOP
+#endif
+}
+template<typename float_t>
+void field<float_t,2>::step_TMTE_OMP(){
+}
+/////////////////////////////////////////////////////
+//Two Dimension, OCL
+////////////////////////////////////////////////////
+template<typename float_t>
+void field<float_t,2>::step_source_OCL(){
+}
+template<typename float_t>
+void field<float_t,2>::step_TM_OCL(){
+}
+template<typename float_t>
+void field<float_t,2>::step_TE_OCL(){
+}
+template<typename float_t>
+void field<float_t,2>::step_TMTE_OCL(){
+}
+/////////////////////////////////////////////////////
+//Two Dimension, step function, general
+////////////////////////////////////////////////////
+template<typename float_t>
+void field<float_t,2>::step(PARALLEL_TYPE pt){
 	if(s->is_simple()){
+		EXEC_STEP(step_source,pt);
 		switch(p_mode){
 			case TMTE:
-				step_source();
-				step_TM();
-				step_TE();
+				EXEC_STEP(step_TMTE,pt);
 				break;
 			case TM:
-				step_source();
-				step_TM();
+				EXEC_STEP(step_TM,pt);
 				break;
 			case TE:
-				step_source();
-				step_TE();
+				EXEC_STEP(step_TE,pt);
 				break;
 		}
 	
@@ -288,21 +578,23 @@ void field<float_t,2>::step(){
 	time+=dt;
 }
 template<typename float_t>
-void field<float_t,2>::stepto(float_t t){
-	clock_t begin=clock();
+void field<float_t,2>::stepto(float_t t,PARALLEL_TYPE pt){
+	double begin=omp_get_wtime();
+	double zero=begin;
 	int count=0;
+	printf("[CFDTD] --Start-- Simulation time began from: %8.2f\n",time);
 	while(t>time)
 	{
-		step();
+		step(pt);
 		++count;
-		float_t time_elapsed=(clock()-begin)/CLOCKS_PER_SEC;
+		double time_elapsed=(omp_get_wtime()-begin);
 		if(time_elapsed>=3){
-			printf("[CFDTD] Stepping to time: %8.2f | speed %10.6f sec/step | %8.2f secs to finish...\n",time,time_elapsed/count,(t-time)/dt*time_elapsed/count);
-			begin=clock();
+			printf("[CFDTD] [Running] Stepped to simulation time: %8.2f | speed %13.6f sec/step | %8.2f secs to finish...\n",time,time_elapsed/count,(t-time)/dt*time_elapsed/count);
+			begin=omp_get_wtime();
 			count=0;
 		}
 	}
+	printf("[CFDTD] ---End--- Simulation time reached to: %8.2f | Used CPU time: %8.2f secs\n",time,omp_get_wtime()-zero);
 }
-
 }
 #endif

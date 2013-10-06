@@ -9,6 +9,7 @@ dielectric<double> eps_fun1(const vec<double,1>& v){
 	return dielectric<double>(1.0);
 }
 dielectric<double> eps_fun2(const vec<double,2>& v){
+	return 1.;
 	if (v.x>5)
 		return dielectric<double>(12.0);
 	if (v.y>5)
@@ -16,64 +17,14 @@ dielectric<double> eps_fun2(const vec<double,2>& v){
 	return dielectric<double>(1.0);
 }
 int main(){
-	dielectric<float> airF(1.0);
-	dielectric<double> airD(1.0);
-	dielectric<long double> airLD(1.0);
-	assert(airF.is_simple());
-	assert(airD.is_simple());
-	assert(airLD.is_simple());
-	cout<<"!!!!!!Material Test Passed!!!!!!"<<endl;
-	vec<double,1> v1_1D(1.);
-	vec<double,1> v2_1D(2.0);
-	v1_1D+=v2_1D*6./3.;
-	v1_1D/=5.;
-	assert(v1_1D.x==1.0);
-	vec<float,2> v1_2D(1.0,2.0);
-	vec<float,2> v2_2D(3.0,4.0);
-	v2_2D-=v1_2D*2;
-	assert(v2_2D.x==1.0&&v2_2D.y==0.0);
-	vec<float,3> v1_3D(1.0,2.0,3.0);
-	vec<float,3> v2_3D(4.0,5.0,6.0);
-	v1_3D-=v2_3D*2;
-	v1_3D*=2;
-	assert(v1_3D.x==-14.0&&v1_3D.z==-18.0);
-	cout<<"!!!!!!Vector Test Passed!!!!!!"<<endl;
-	custom_structure<double,1>* s1d=new custom_structure<double,1>(10,100);
-	assert(s1d->interval=0.01&&s1d->edges[X]==10);
-	assert(s1d->is_simple()==0);
-	s1d->set_dielectric_func(eps_fun1);
-	assert(s1d->is_simple()==1);
-	custom_structure<double,2>* s2d=new custom_structure<double,2>(10,10,10);
-	assert(s2d->interval==0.1&&s2d->edges[Y]==10);
-	assert(s2d->is_simple()==0);
-	s2d->set_dielectric_func(eps_fun2);
-	assert(s2d->is_simple()==1);
-	cout<<"!!!!!!Custom Structure Test Passed!!!!!!"<<endl;
-	double* a=new double[3*4];
-	double* b=new double[3*4];
-	for(int i=0;i<12;++i) a[i]=i/10.;
-	io::output<double>("temp.txt",a,io::IO_TEXT,3,4);
-	io::input<double>("temp.txt",b,io::IO_TEXT,20);
-	assert(b[4]==4./10.);
-	io::output<double>("temp.dat",a,io::IO_BINARY,4,3);
-	io::output<double>("temp.bmp",a,io::IO_IMAGE_BMP,4,3);
-	io::input<double>("temp.dat",b,io::IO_BINARY);
-	assert(b[4]==4./10.);
-	field<double,2> f(s2d,boundary_layer<double,2>(1.0,ZERO));
-	f.output(EPS,"eps.bmp");
-	f.output(EPS,"eps.txt",io::IO_TEXT);
-	f.output(CB,"CB.bmp");
-	f.output(CB,"CB.txt",io::IO_TEXT);
-	sinc_source<double>* src=new sinc_source<double>(Ez,1.,1.);
-	f.push_source(vec<double,2>(1.0,1.0),src,0.);
-	f.stepto(0.5);
-	f.output(Ez,"Ez1.bmp");
-	f.stepto(1.5);
-	f.output(Ez,"Ez2.bmp");
-	f.stepto(10);
-	f.output(Ez,"Ez3.bmp");
-	f.stepto(30);
-	f.output(Ez,"Ez4.bmp");
-	cout<<"!!!!!!Basic IO test Passed!!!!!!"<<endl;
+	custom_structure<double,2>* s1=new custom_structure<double,2>(10,10,20);
+	custom_structure<double,2>* s2=new custom_structure<double,2>(10,10,20);
+	s1->set_dielectric_func(eps_fun2);
+	s2->set_dielectric_func(eps_fun2);
+	field<double,2> f1(s1,boundary_layer<double,2>(1.0,ZERO),TM);
+	field<double,2> f2(s2,boundary_layer<double,2>(1.0,ZERO),TM);
+	gaussian_source<double>* src=new gaussian_source<double>(Ez,1.,0.1);
+	f1.push_source(vec<double,2>(5,5),src,0.);
+	f1.stepto(100,OMP);
 	return 0;
 }
