@@ -401,7 +401,7 @@ void field<float_t,2>::step_TM_OMP(){
 				size_t L3_y_end=(L3_index_y+1)*shared_loop_size+1;
 				if (L3_y_end>s->grids[Y]-1) L3_y_end=s->grids[Y]-1;
 				assert(L3_y_end>L3_y_begin);
-				
+//#pragma omp parallel for schedule(dynamic)
 				for(size_t L2_index_x=0 ; L2_index_x < DIVIDE_CEIL(L3_x_end-L3_x_begin,seperated_loop_size) ; L2_index_x++)
 				for(size_t L2_index_y=0 ; L2_index_y < DIVIDE_CEIL(L3_y_end-L3_y_begin,seperated_loop_size) ; L2_index_y++)
 				{
@@ -471,6 +471,7 @@ void field<float_t,2>::step_TM_OMP(){
 				if (L3_y_end>s->grids[Y]-1) L3_y_end=s->grids[Y]-1;
 				assert(L3_y_end>L3_y_begin);
 				
+//#pragma omp parallel for schedule(dynamic)
 				for(size_t L2_index_x=0 ; L2_index_x < DIVIDE_CEIL(L3_x_end-L3_x_begin,seperated_loop_size) ; L2_index_x++)
 				for(size_t L2_index_y=0 ; L2_index_y < DIVIDE_CEIL(L3_y_end-L3_y_begin,seperated_loop_size) ; L2_index_y++)
 				{

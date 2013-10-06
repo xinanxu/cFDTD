@@ -26,5 +26,6 @@ int main(){
 	gaussian_source<double>* src=new gaussian_source<double>(Ez,1.,0.1);
 	f1.push_source(vec<double,2>(5,5),src,0.);
 	f1.stepto(100,OMP);
+	f1.stepto(200);
 	return 0;
 }
