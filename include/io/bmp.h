@@ -1,17 +1,20 @@
-// float2bmp2.hpp
-//
-// Copyright 2010 Michael Thomas Greer
-// Distributed under the Boost Software License, Version 1.0.
-// (See http://www.boost.org/LICENSE_1_0.txt )
-//
-
 #ifndef _BMP_H
 #define _BMP_H
+
+namespace cfdtd{
+namespace io{
+// namespace cfdtd::io
+
+enum color_map{BLUE_RED,WHITE_BLACK};
+
+
+
+}
+}
 
 #include <fstream>
 #include <iostream>
 #include <algorithm>
-namespace cfdtd
   {
 	  namespace io{
 enum color_map{BLUE_RED,WHITE_BLACK};
