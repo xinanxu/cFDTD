@@ -3,7 +3,7 @@ CFLAGS	:= -g -Wall -Werror -c -O0 -fopenmp -I./include -std=c++11
 LDFLAGS	:= -Wall -static -L$(CURDIR)
 LIBS	:= -lcfdtd
 
-DIRS    := src
+DIRS    := src src/io
 TARGET	:= libcfdtd.a
 SOURCES := $(foreach dir, $(DIRS), $(wildcard $(dir)/*.cpp))
 OBJECTS := $(SOURCES:.cpp=.o)
@@ -18,7 +18,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
 	@echo "[AR] $@"
-	@ar rcs $@ $<
+	ar rcs $@ $^
 
 %.o : %.cpp
 	@echo "[CXX] $<"
