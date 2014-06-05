@@ -24,3 +24,8 @@ obj/
 # vim swaps
 .swp
 /Debug
+
+.project
+.settings
+.classpath
+.metadata
